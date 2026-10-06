@@ -741,4 +741,12 @@ def enable(api: PluginApi):
     api.register_album_action(LrcLibLyricsSearch)
     api.register_track_action(LrcLibLyricsGet)
     api.register_album_action(LrcLibLyricsGet)
+
+    api.plugin_config.register_option("get_on_load", False)
+    api.plugin_config.register_option("get_on_save", False)
+    api.plugin_config.register_option("auto_overwrite", False)
+    api.plugin_config.register_option("save_lrc_file", False)
+    api.plugin_config.register_option("ignore_instrumental", False)
+    api.plugin_config.register_option("plain_as_txt", False)
+
     api.register_options_page(LrclibLyricsOptionsPage)
