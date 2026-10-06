@@ -237,7 +237,7 @@ def _request(api, url, album, callback, queryargs=None, important=False):
             priority=True,
             important=important,
             queryargs=queryargs,
-            cacheloadcontrol=QNetworkRequest.PreferNetwork,
+            #cacheloadcontrol=QNetworkRequest.PreferNetwork,
         )
     
     api.add_album_task(
