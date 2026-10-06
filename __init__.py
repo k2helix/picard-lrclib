@@ -225,18 +225,26 @@ def show_search_table(parent, query, response, request_callback):
         return None
 
 
-def _request(ws, url, callback, queryargs=None, important=False):
+def _request(api, url, album, callback, queryargs=None, important=False):
     if not queryargs:
         queryargs = {}
 
-    ws.get_url(
-        url=url,
-        handler=callback,
-        parse_response_type="json",
-        priority=True,
-        important=important,
-        queryargs=queryargs,
-        cacheloadcontrol=QNetworkRequest.PreferNetwork,
+    def create_request():
+        return api.web_service.get_url(
+            url=url,
+            handler=callback,
+            parse_response_type="json",
+            priority=True,
+            important=important,
+            queryargs=queryargs,
+            cacheloadcontrol=QNetworkRequest.PreferNetwork,
+        )
+    
+    api.add_album_task(
+        album,
+        task_id,
+        'Fetching data',
+        request_factory=create_request,
     )
 
 
@@ -286,7 +294,7 @@ def fetch_lyrics(
         if length:
             queryargs["duration"] = length
 
-    album._requests += 1
+    # album._requests += 1
     api.logger.debug(
         "{}: {} {}?{}".format(
             "LRCLIB Lyrics",
@@ -295,9 +303,11 @@ def fetch_lyrics(
             urlencode(queryargs),
         )
     )
+
     _request(
-        album.tagger.webservice,  # type: ignore
+        api,  # type: ignore
         url,
+        album,
         partial(process_response, method, album, metadata, linked_files),
         queryargs,
     )
@@ -323,8 +333,9 @@ def process_response(
         if method == "get_on_save":
             for file in linked_files:
                 files_processing.discard(file.filename)
-        album._requests -= 1
-        album._finalize_loading(None)
+        # album._requests -= 1
+        # album._finalize_loading(None)
+        api.complete_album_task(album, task_id)
         return
 
     try:
@@ -439,8 +450,10 @@ def process_response(
         if method == "get_on_save":
             for file in linked_files:
                 file.save()
-        album._requests -= 1
-        album._finalize_loading(None)
+
+        api.complete_album_task(album, task_id)
+        # album._requests -= 1
+        # album._finalize_loading(None)
 
 
 class LrclibLyricsOptionsPage(OptionsPage):
