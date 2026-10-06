@@ -648,7 +648,7 @@ class LrclibLyricsOptionsPage(OptionsPage):
         return orphaned_count
 
 
-def get_on_load(track: Track, file: File) -> None:
+def get_on_load(api, track: Track, file: File) -> None:
     if not api.global_config.setting["get_on_load"]:
         return
     try:
@@ -662,7 +662,7 @@ def get_on_load(track: Track, file: File) -> None:
         api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_load: {err}")
 
 
-def get_on_save(file: File) -> None:
+def get_on_save(api, file: File) -> None:
     if not api.global_config.setting["get_on_save"]:
         return
     if file.filename in files_processing:
