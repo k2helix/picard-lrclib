@@ -671,7 +671,7 @@ def get_on_save(api, file: File) -> None:
         )  # Picard only allow one concurrent save_hook
     try:
         files_processing.add(file.filename)
-        album = file.parent.album  # type: ignore
+        album = file.parent_item.album  # type: ignore
         assert isinstance(album, Album), "Album is not of type Album"
         metadata = file.metadata
         assert isinstance(metadata, Metadata), "Metadata is not of type Metadata"
