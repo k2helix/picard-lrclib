@@ -242,7 +242,7 @@ def _request(api, url, album, callback, queryargs=None, important=False):
     
     api.add_album_task(
         album,
-        task_id,
+        f'data_{album.id}',
         'Fetching data',
         request_factory=create_request,
     )
@@ -336,7 +336,7 @@ def process_response(
                 files_processing.discard(file.filename)
         # album._requests -= 1
         # album._finalize_loading(None)
-        api.complete_album_task(album, task_id)
+        api.complete_album_task(album, f'data_{album.id}')
         return
 
     try:
@@ -452,7 +452,7 @@ def process_response(
             for file in linked_files:
                 file.save()
 
-        api.complete_album_task(album, task_id)
+        api.complete_album_task(album, f'data_{album.id}')
         # album._requests -= 1
         # album._finalize_loading(None)
 
