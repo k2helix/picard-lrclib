@@ -354,7 +354,7 @@ def process_response(
             response.get("instrumental", False)
             or "(Instrumental)" in (response.get("trackName") or "")
             or "[au: instrumental]" in (response.get("plainLyrics") or "")
-        ) and (api.plugin_config.setting["ignore_instrumental"] and method != "search"):
+        ) and (api.plugin_config["ignore_instrumental"] and method != "search"):
             lyrics = None
         elif response.get("syncedLyrics"):
             lyrics = response.get("syncedLyrics")
@@ -366,7 +366,7 @@ def process_response(
             return
 
         for file in linked_files:
-            ext = ".txt" if (is_plain and api.plugin_config.setting["plain_as_txt"]) else ".lrc"
+            ext = ".txt" if (is_plain and api.plugin_config["plain_as_txt"]) else ".lrc"
             full_path = file.filename
             assert full_path is not None, "File path is None"
             dirname = os.path.dirname(full_path)
@@ -380,7 +380,7 @@ def process_response(
             if (
                 has_metadata_lyrics
                 and not has_lrc_file
-                and api.plugin_config.setting["save_lrc_file"]
+                and api.plugin_config["save_lrc_file"]
                 and method != "search"
             ):
                 lyrics = file.metadata.get("lyrics")
@@ -391,9 +391,9 @@ def process_response(
             elif (
                 (
                     (has_metadata_lyrics and has_lrc_file)
-                    or (has_metadata_lyrics and not api.plugin_config.setting["save_lrc_file"])
+                    or (has_metadata_lyrics and not api.plugin_config["save_lrc_file"])
                 )
-                and (not api.plugin_config.setting["auto_overwrite"])
+                and (not api.plugin_config["auto_overwrite"])
                 and (method not in ["get_on_load", "get_on_save"])
             ):
                 title = "Overwrite file lyrics?"
@@ -406,7 +406,7 @@ def process_response(
                     return
 
             file.metadata["lyrics"] = lyrics
-            if api.plugin_config.setting["save_lrc_file"]:
+            if api.plugin_config["save_lrc_file"]:
                 for old_ext in [".txt", ".lrc"]:
                     old_file = base_path + old_ext
                     if os.path.exists(old_file):
@@ -556,20 +556,20 @@ class LrclibLyricsOptionsPage(OptionsPage):
         self.box.addWidget(self.description)
 
     def load(self):
-        self.get_on_load.setChecked(bool(self.api.plugin_config.setting["get_on_load"]))
-        self.get_on_save.setChecked(bool(self.api.plugin_config.setting["get_on_save"]))
-        self.auto_overwrite.setChecked(bool(self.api.plugin_config.setting["auto_overwrite"]))
-        self.save_lrc.setChecked(bool(self.api.plugin_config.setting["save_lrc_file"]))
-        self.ignore_instrumental.setChecked(bool(self.api.plugin_config.setting["ignore_instrumental"]))
-        self.plain_as_txt.setChecked(bool(self.api.plugin_config.setting["plain_as_txt"]))
+        self.get_on_load.setChecked(bool(self.api.plugin_config.get("get_on_load", False)))
+        self.get_on_save.setChecked(bool(self.api.plugin_config.get("get_on_save", False)))
+        self.auto_overwrite.setChecked(bool(self.api.plugin_config.get("auto_overwrite", False)))
+        self.save_lrc.setChecked(bool(self.api.plugin_config.get("save_lrc_file", False)))
+        self.ignore_instrumental.setChecked(bool(self.api.plugin_config.get("ignore_instrumental", False)))
+        self.plain_as_txt.setChecked(bool(self.api.plugin_config.get("plain_as_txt", False)))
 
     def save(self):
-        self.api.plugin_config.setting["get_on_load"] = self.get_on_load.isChecked()
-        self.api.plugin_config.setting["get_on_save"] = self.get_on_save.isChecked()
-        self.api.plugin_config.setting["auto_overwrite"] = self.auto_overwrite.isChecked()
-        self.api.plugin_config.setting["save_lrc_file"] = self.save_lrc.isChecked()
-        self.api.plugin_config.setting["ignore_instrumental"] = self.ignore_instrumental.isChecked()
-        self.api.plugin_config.setting["plain_as_txt"] = self.plain_as_txt.isChecked()
+        self.api.plugin_config["get_on_load"] = self.get_on_load.isChecked()
+        self.api.plugin_config["get_on_save"] = self.get_on_save.isChecked()
+        self.api.plugin_config["auto_overwrite"] = self.auto_overwrite.isChecked()
+        self.api.plugin_config["save_lrc_file"] = self.save_lrc.isChecked()
+        self.api.plugin_config["ignore_instrumental"] = self.ignore_instrumental.isChecked()
+        self.api.plugin_config["plain_as_txt"] = self.plain_as_txt.isChecked()
 
     def clean_orphaned_lrc_files(self):
         try:
@@ -649,7 +649,7 @@ class LrclibLyricsOptionsPage(OptionsPage):
 
 
 def get_on_load(api, track: Track, file: File) -> None:
-    if not api.plugin_config.setting["get_on_load"]:
+    if not api.plugin_config["get_on_load"]:
         return
     try:
         if not track.files:
@@ -663,7 +663,7 @@ def get_on_load(api, track: Track, file: File) -> None:
 
 
 def get_on_save(api, file: File) -> None:
-    if not api.plugin_config.setting["get_on_save"]:
+    if not api.plugin_config["get_on_save"]:
         return
     if file.filename in files_processing:
         return files_processing.discard(
