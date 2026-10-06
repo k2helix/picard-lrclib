@@ -556,12 +556,12 @@ class LrclibLyricsOptionsPage(OptionsPage):
         self.box.addWidget(self.description)
 
     def load(self):
-        self.get_on_load.setChecked(bool(self.api.plugin_config.get("get_on_load", False)))
-        self.get_on_save.setChecked(bool(self.api.plugin_config.get("get_on_save", False)))
-        self.auto_overwrite.setChecked(bool(self.api.plugin_config.get("auto_overwrite", False)))
-        self.save_lrc.setChecked(bool(self.api.plugin_config.get("save_lrc_file", False)))
-        self.ignore_instrumental.setChecked(bool(self.api.plugin_config.get("ignore_instrumental", False)))
-        self.plain_as_txt.setChecked(bool(self.api.plugin_config.get("plain_as_txt", False)))
+        self.get_on_load.setChecked(bool(self.api.plugin_config["get_on_load"]))
+        self.get_on_save.setChecked(bool(self.api.plugin_config["get_on_save"]))
+        self.auto_overwrite.setChecked(bool(self.api.plugin_config["auto_overwrite"]))
+        self.save_lrc.setChecked(bool(self.api.plugin_config["save_lrc_file"]))
+        self.ignore_instrumental.setChecked(bool(self.api.plugin_config["ignore_instrumental"]))
+        self.plain_as_txt.setChecked(bool(self.api.plugin_config["plain_as_txt"]))
 
     def save(self):
         self.api.plugin_config["get_on_load"] = self.get_on_load.isChecked()
