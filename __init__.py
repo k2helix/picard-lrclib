@@ -309,12 +309,13 @@ def fetch_lyrics(
         api,  # type: ignore
         url,
         album,
-        partial(process_response, method, album, metadata, linked_files),
+        partial(process_response, api, method, album, metadata, linked_files),
         queryargs,
     )
 
 
 def process_response(
+    api,
     method: str,
     album: Album,
     metadata: Metadata,
