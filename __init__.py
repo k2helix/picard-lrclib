@@ -271,6 +271,7 @@ def _fetch_json(url, params):
 
 
 def fetch_lyrics(
+    api,
     method: str,
     album: Album,
     metadata: Metadata,
@@ -657,7 +658,7 @@ def get_on_load(api, track: Track, file: File) -> None:
         album = track.album
         assert isinstance(album, Album), "Album is not of type Album"
         length = get_track_duration(track)
-        fetch_lyrics("get_on_load", album, track.metadata, track.files, length)
+        fetch_lyrics(api, "get_on_load", album, track.metadata, track.files, length)
     except Exception as err:
         api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_load: {err}")
 
@@ -679,7 +680,7 @@ def get_on_save(api, file: File) -> None:
         if metadata["~length"]:
             length = parse_duration(str(metadata["~length"]))
         assert isinstance(length, int), "Length is not of type integer"
-        fetch_lyrics("get_on_save", album, metadata, [file], length)
+        fetch_lyrics(api, "get_on_save", album, metadata, [file], length)
     except Exception as err:
         api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_save: {err}")
         files_processing.discard(file.filename)
@@ -695,7 +696,7 @@ class LrcLibLyricsGet(BaseAction):
             album = track.album
             assert isinstance(album, Album), "Album is not of type Album"
             length = get_track_duration(track)
-            fetch_lyrics("get", album, track.metadata, track.files, length)
+            fetch_lyrics(self.api, "get", album, track.metadata, track.files, length)
         except Exception as err:
             self.api.logger.error(err)
 
@@ -718,7 +719,7 @@ class LrcLibLyricsSearch(BaseAction):
         try:
             if not track.linked_files:  # If it's not in your local file then ignore
                 return
-            fetch_lyrics("search", track.album, track.metadata, track.linked_files)
+            fetch_lyrics(self.api, "search", track.album, track.metadata, track.linked_files)
         except Exception as err:
             self.api.logger.error(err)
 
