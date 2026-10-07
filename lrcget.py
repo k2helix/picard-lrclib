@@ -1,4 +1,15 @@
 from __future__ import annotations
+from picard.plugin3.api import PluginApi
+
+from picard.plugin3.api import (
+    Album,
+    BaseAction,
+    File,
+    Metadata,
+    OptionsPage,
+    Track,
+)
+
 import json
 import os
 from functools import partial
@@ -11,54 +22,8 @@ from urllib.request import (
     urlopen,
 )
 
-from picard import config, log
-from picard.album import Album
-from picard.config import BoolOption
-from picard.file import (
-    File,
-    register_file_post_addition_to_track_processor,
-    register_file_post_save_processor,
-)
-from picard.metadata import Metadata
-from picard.track import Track
-from picard.ui.itemviews import (
-    BaseAction,
-    register_album_action,
-    register_track_action,
-)
-from picard.ui.options import (
-    OptionsPage,
-    register_options_page,
-)
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtNetwork import QNetworkRequest
-
-PLUGIN_NAME = "LRCLIB Lyrics"
-PLUGIN_AUTHOR = "Glicole"
-
-PLUGIN_DESCRIPTION = (
-    "Fetch and embed lyrics from LRCLIB's crowdsourced database<br/>"
-    "<b>Automatic Integration:</b> Save lyrics to both audio file metadata <i>and</i> .lrc sidecar files<br/>"
-    "<b>Jellyfin/Plex Ready:</b> Generated .lrc files work seamlessly with media servers and Kodi<br/>"
-    "<b>Configurable Workflow:</b> Toggle auto-fetching and .lrc file creation in plugin settings<br/>"
-    "<b>Smart Fetch:</b> Prefers synchronized lyrics when available, falls back to plain text<br/>"
-    "<br/>"
-    "<i>Based on Dylancyclone's plugin</i>"
-)
-PLUGIN_VERSION = "1.2.0"
-PLUGIN_API_VERSIONS = ["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]
-PLUGIN_LICENSE = "MIT"
-PLUGIN_LICENSE_URL = "https://opensource.org/licenses/MIT"
-PLUGIN_USER_GUIDE_URL = "https://github.com/izaz4141/picard-lrclib"
-
-PLUGIN_OPTIONS = {
-    "get_on_load": False,
-    "get_on_save": False,
-    "auto_overwrite": False,
-    "save_lrc_file": True,
-    "ignore_instrumental": False,
-    "plain_as_txt": False,
-}
+from PyQt6 import QtCore, QtGui, QtWidgets
+# from PyQt6.QtNetwork import QNetworkRequest
 
 lrclib_get_url = "https://lrclib.net/api/get"
 lrclib_search_url = "https://lrclib.net/api/search"
@@ -112,9 +77,9 @@ def get_track_duration(track: Track) -> int:
     if metadata["~length"]:
         length = parse_duration(str(metadata["~length"]))
     else:
-        log.warning(
+        api.logger.warning(
             '{}: length NOT found for in metadata for track "{}", falling back to file length'.format(
-                PLUGIN_NAME, metadata["title"]
+                "LRCLIB Lyrics", metadata["title"]
             )
         )
         assert track.num_linked_files > 0, "No files linked to {}".format(metadata["title"])
@@ -168,13 +133,13 @@ def show_search_table(parent, query, response, request_callback):
     vheader.setVisible(False)
     hheader = table.horizontalHeader()
     assert hheader is not None, "HHeader is unexpectedly None"
-    hheader.setDefaultAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)  # type: ignore
-    hheader.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-    hheader.setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
-    hheader.setSectionResizeMode(2, QtWidgets.QHeaderView.Interactive)
-    hheader.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
-    hheader.setSectionResizeMode(4, QtWidgets.QHeaderView.Interactive)
-    hheader.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+    hheader.setDefaultAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)  # type: ignore
+    hheader.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+    hheader.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+    hheader.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Interactive)
+    hheader.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+    hheader.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.Interactive)
+    hheader.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
     table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
     table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
     table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -193,8 +158,8 @@ def show_search_table(parent, query, response, request_callback):
         table.setRowCount(len(response))
         for row, item in enumerate(response):
             num_item = QtWidgets.QTableWidgetItem()
-            num_item.setTextAlignment(QtCore.Qt.AlignCenter)  # type: ignore
-            num_item.setData(QtCore.Qt.EditRole, row + 1)  # type: ignore
+            num_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)  # type: ignore
+            num_item.setData(QtCore.Qt.ItemDataRole.EditRole, row + 1)  # type: ignore
             table.setItem(row, 0, num_item)
 
             has_synced = item.get("syncedLyrics") or False
@@ -208,7 +173,7 @@ def show_search_table(parent, query, response, request_callback):
             for col, val in enumerate(values, start=1):
                 cell_item = QtWidgets.QTableWidgetItem(str(val))
                 if col in [3, 5]:
-                    cell_item.setTextAlignment(QtCore.Qt.AlignCenter)  # type: ignore
+                    cell_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)  # type: ignore
                     if col == 5:
                         cell_item.setForeground(
                             QtGui.QColor("#2ecc71" if has_synced else "#e74c3c")
@@ -227,9 +192,9 @@ def show_search_table(parent, query, response, request_callback):
             params = {"q": query}
             response = request_callback(lrclib_search_url, params)
             populate_table(response)
-            log.debug(f"Search refreshed: {len(response)} results")
+            api.logger.debug(f"Search refreshed: {len(response)} results")
         except Exception as e:
-            log.error(f"Error during search refresh: {e}")
+            api.logger.error(f"Error during search refresh: {e}")
 
     search_button.clicked.connect(on_search_clicked)
     search_input.returnPressed.connect(on_search_clicked)
@@ -243,7 +208,7 @@ def show_search_table(parent, query, response, request_callback):
     button_box.accepted.connect(dialog.accept)
     button_box.rejected.connect(dialog.reject)
 
-    result = dialog.exec_()
+    result = dialog.exec()
     if result == QtWidgets.QDialog.Accepted:
         selected = table.currentRow()
         return response[selected] if selected >= 0 else None
@@ -251,18 +216,26 @@ def show_search_table(parent, query, response, request_callback):
         return None
 
 
-def _request(ws, url, callback, queryargs=None, important=False):
+def _request(api, url, album, callback, queryargs=None, important=False):
     if not queryargs:
         queryargs = {}
 
-    ws.get_url(
-        url=url,
-        handler=callback,
-        parse_response_type="json",
-        priority=True,
-        important=important,
-        queryargs=queryargs,
-        cacheloadcontrol=QNetworkRequest.PreferNetwork,
+    def create_request():
+        return api.web_service.get_url(
+            url=url,
+            handler=callback,
+            parse_response_type="json",
+            priority=True,
+            important=important,
+            queryargs=queryargs,
+            #cacheloadcontrol=QNetworkRequest.PreferNetwork,
+        )
+    
+    api.add_album_task(
+        album,
+        f'data_{album.id}',
+        'Fetching data',
+        request_factory=create_request,
     )
 
 
@@ -279,16 +252,17 @@ def _fetch_json(url, params):
         )
         with urlopen(req, timeout=10) as resp:
             if resp.status != 200:
-                log.error(f"{PLUGIN_NAME}: HTTP error {resp.status} for {full_url}")
+                api.logger.error(f"{"LRCLIB Lyrics"}: HTTP error {resp.status} for {full_url}")
                 return {}
             data = resp.read().decode("utf-8")
             return json.loads(data)
     except Exception as e:
-        log.error(f"{PLUGIN_NAME}: fetch_json: failed to request {url} — {e}")
+        api.logger.error(f"{"LRCLIB Lyrics"}: fetch_json: failed to request {url} — {e}")
         return {}
 
 
 def fetch_lyrics(
+    api,
     method: str,
     album: Album,
     metadata: Metadata,
@@ -312,24 +286,27 @@ def fetch_lyrics(
         if length:
             queryargs["duration"] = length
 
-    album._requests += 1
-    log.debug(
+    # album._requests += 1
+    api.logger.debug(
         "{}: {} {}?{}".format(
-            PLUGIN_NAME,
+            "LRCLIB Lyrics",
             "GET" if method != "search" else "SEARCH",
             quote(url),
             urlencode(queryargs),
         )
     )
+
     _request(
-        album.tagger.webservice,  # type: ignore
+        api,  # type: ignore
         url,
-        partial(process_response, method, album, metadata, linked_files),
+        album,
+        partial(process_response, api, method, album, metadata, linked_files),
         queryargs,
     )
 
 
 def process_response(
+    api,
     method: str,
     album: Album,
     metadata: Metadata,
@@ -341,16 +318,17 @@ def process_response(
     if error or (
         response and isinstance(response, dict) and not response.get("id", False)
     ):
-        log.warning(
+        api.logger.warning(
             '{}: lyrics NOT found for track "{}" by {}'.format(
-                PLUGIN_NAME, metadata["title"], metadata["artist"]
+                "LRCLIB Lyrics", metadata["title"], metadata["artist"]
             )
         )
         if method == "get_on_save":
             for file in linked_files:
                 files_processing.discard(file.filename)
-        album._requests -= 1
-        album._finalize_loading(None)
+        # album._requests -= 1
+        # album._finalize_loading(None)
+        api.complete_album_task(album, f'data_{album.id}')
         return
 
     try:
@@ -369,7 +347,7 @@ def process_response(
             response.get("instrumental", False)
             or "(Instrumental)" in (response.get("trackName") or "")
             or "[au: instrumental]" in (response.get("plainLyrics") or "")
-        ) and (config.setting["ignore_instrumental"] and method != "search"):
+        ) and (api.plugin_config["ignore_instrumental"] and method != "search"):
             lyrics = None
         elif response.get("syncedLyrics"):
             lyrics = response.get("syncedLyrics")
@@ -381,7 +359,7 @@ def process_response(
             return
 
         for file in linked_files:
-            ext = ".txt" if (is_plain and config.setting["plain_as_txt"]) else ".lrc"
+            ext = ".txt" if (is_plain and api.plugin_config["plain_as_txt"]) else ".lrc"
             full_path = file.filename
             assert full_path is not None, "File path is None"
             dirname = os.path.dirname(full_path)
@@ -395,7 +373,7 @@ def process_response(
             if (
                 has_metadata_lyrics
                 and not has_lrc_file
-                and config.setting["save_lrc_file"]
+                and api.plugin_config["save_lrc_file"]
                 and method != "search"
             ):
                 lyrics = file.metadata.get("lyrics")
@@ -406,9 +384,9 @@ def process_response(
             elif (
                 (
                     (has_metadata_lyrics and has_lrc_file)
-                    or (has_metadata_lyrics and not config.setting["save_lrc_file"])
+                    or (has_metadata_lyrics and not api.plugin_config["save_lrc_file"])
                 )
-                and (not config.setting["auto_overwrite"])
+                and (not api.plugin_config["auto_overwrite"])
                 and (method not in ["get_on_load", "get_on_save"])
             ):
                 title = "Overwrite file lyrics?"
@@ -421,22 +399,22 @@ def process_response(
                     return
 
             file.metadata["lyrics"] = lyrics
-            if config.setting["save_lrc_file"]:
+            if api.plugin_config["save_lrc_file"]:
                 for old_ext in [".txt", ".lrc"]:
                     old_file = base_path + old_ext
                     if os.path.exists(old_file):
                         try:
                             os.remove(old_file)
                         except Exception as e:
-                            log.error(
-                                f"{PLUGIN_NAME}: Failed to delete {old_file}: {e}"
+                            api.logger.error(
+                                f"{"LRCLIB Lyrics"}: Failed to delete {old_file}: {e}"
                             )
 
                 try:
                     with open(file_lrc, "w", encoding="utf-8") as f:
                         f.write(lyrics)
                 except Exception as e:
-                    log.error(f"{PLUGIN_NAME}: Failed to write .lrc file: {e}")
+                    api.logger.error(f"{"LRCLIB Lyrics"}: Failed to write .lrc file: {e}")
                     parent_widget = getattr(
                         getattr(file, "tagger", None), "window", None
                     )
@@ -447,16 +425,16 @@ def process_response(
                         "Failed to Save LRC File",
                         f"Could not save lyrics file:\n\n{file_lrc}\n\nError: {e}",
                     )
-        log.debug(
+        api.logger.debug(
             '{}: lyrics loaded for track "{}" by {}'.format(
-                PLUGIN_NAME, metadata["title"], metadata["artist"]
+                "LRCLIB Lyrics", metadata["title"], metadata["artist"]
             )
         )
 
     except (TypeError, KeyError, ValueError) as e:
-        log.error(
+        api.logger.error(
             '{}: lyrics NOT loaded for track "{}" by {}: {}'.format(
-                PLUGIN_NAME, metadata["title"], metadata["artist"], e
+                "LRCLIB Lyrics", metadata["title"], metadata["artist"], e
             ),
             exc_info=True,
         )
@@ -465,8 +443,10 @@ def process_response(
         if method == "get_on_save":
             for file in linked_files:
                 file.save()
-        album._requests -= 1
-        album._finalize_loading(None)
+
+        api.complete_album_task(album, f'data_{album.id}')
+        # album._requests -= 1
+        # album._finalize_loading(None)
 
 
 class LrclibLyricsOptionsPage(OptionsPage):
@@ -508,9 +488,6 @@ class LrclibLyricsOptionsPage(OptionsPage):
         "xwma",
     }
 
-    options = [
-        BoolOption("setting", key, PLUGIN_OPTIONS[key]) for key in PLUGIN_OPTIONS.keys()
-    ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -558,7 +535,7 @@ class LrclibLyricsOptionsPage(OptionsPage):
         self.box.addWidget(self.cleanup_button)
 
         self.spacer = QtWidgets.QSpacerItem(
-            0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+            0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding
         )
         self.box.addItem(self.spacer)
 
@@ -572,20 +549,20 @@ class LrclibLyricsOptionsPage(OptionsPage):
         self.box.addWidget(self.description)
 
     def load(self):
-        self.get_on_load.setChecked(bool(config.setting["get_on_load"]))
-        self.get_on_save.setChecked(bool(config.setting["get_on_save"]))
-        self.auto_overwrite.setChecked(bool(config.setting["auto_overwrite"]))
-        self.save_lrc.setChecked(bool(config.setting["save_lrc_file"]))
-        self.ignore_instrumental.setChecked(bool(config.setting["ignore_instrumental"]))
-        self.plain_as_txt.setChecked(bool(config.setting["plain_as_txt"]))
+        self.get_on_load.setChecked(bool(self.api.plugin_config["get_on_load"]))
+        self.get_on_save.setChecked(bool(self.api.plugin_config["get_on_save"]))
+        self.auto_overwrite.setChecked(bool(self.api.plugin_config["auto_overwrite"]))
+        self.save_lrc.setChecked(bool(self.api.plugin_config["save_lrc_file"]))
+        self.ignore_instrumental.setChecked(bool(self.api.plugin_config["ignore_instrumental"]))
+        self.plain_as_txt.setChecked(bool(self.api.plugin_config["plain_as_txt"]))
 
     def save(self):
-        config.setting["get_on_load"] = self.get_on_load.isChecked()
-        config.setting["get_on_save"] = self.get_on_save.isChecked()
-        config.setting["auto_overwrite"] = self.auto_overwrite.isChecked()
-        config.setting["save_lrc_file"] = self.save_lrc.isChecked()
-        config.setting["ignore_instrumental"] = self.ignore_instrumental.isChecked()
-        config.setting["plain_as_txt"] = self.plain_as_txt.isChecked()
+        self.api.plugin_config["get_on_load"] = self.get_on_load.isChecked()
+        self.api.plugin_config["get_on_save"] = self.get_on_save.isChecked()
+        self.api.plugin_config["auto_overwrite"] = self.auto_overwrite.isChecked()
+        self.api.plugin_config["save_lrc_file"] = self.save_lrc.isChecked()
+        self.api.plugin_config["ignore_instrumental"] = self.ignore_instrumental.isChecked()
+        self.api.plugin_config["plain_as_txt"] = self.plain_as_txt.isChecked()
 
     def clean_orphaned_lrc_files(self):
         try:
@@ -600,10 +577,10 @@ class LrclibLyricsOptionsPage(OptionsPage):
             )
 
             if not root_dir:
-                log.info(f"{PLUGIN_NAME}: User cancelled directory selection")
+                self.api.logger.info(f"{"LRCLIB Lyrics"}: User cancelled directory selection")
                 return
 
-            log.info(f"{PLUGIN_NAME}: Starting recursive scan of {root_dir}")
+            self.api.logger.info(f"{"LRCLIB Lyrics"}: Starting recursive scan of {root_dir}")
             orphaned_count = self._clean_directory_recursive(root_dir)
 
             if orphaned_count > 0:
@@ -612,21 +589,21 @@ class LrclibLyricsOptionsPage(OptionsPage):
                     "Cleanup Complete",
                     f"Removed {orphaned_count} orphaned .lrc file{'s' if orphaned_count != 1 else ''}",
                 )
-                log.info(f"{PLUGIN_NAME}: Cleaned {orphaned_count} orphaned .lrc files")
+                self.api.logger.info(f"{"LRCLIB Lyrics"}: Cleaned {orphaned_count} orphaned .lrc files")
             else:
                 QtWidgets.QMessageBox.information(
                     parent, "Cleanup Complete", "No orphaned .lrc files found"
                 )
-                log.info(f"{PLUGIN_NAME}: No orphaned .lrc files found")
+                self.api.logger.info(f"{"LRCLIB Lyrics"}: No orphaned .lrc files found")
 
         except Exception as err:
-            log.error(
-                f"{PLUGIN_NAME}: Error cleaning orphaned files: {err}", exc_info=True
+            self.api.logger.error(
+                f"{"LRCLIB Lyrics"}: Error cleaning orphaned files: {err}", exc_info=True
             )
 
     def _clean_directory_recursive(self, root_dir):
         if not os.path.isdir(root_dir):
-            log.warning(f"{PLUGIN_NAME}: Directory does not exist: {root_dir}")
+            self.api.logger.warning(f"{"LRCLIB Lyrics"}: Directory does not exist: {root_dir}")
             return 0
 
         orphaned_count = 0
@@ -650,22 +627,22 @@ class LrclibLyricsOptionsPage(OptionsPage):
                         try:
                             os.remove(lrc_path)
                             orphaned_count += 1
-                            log.debug(
-                                f"{PLUGIN_NAME}: Deleted orphaned file: {lrc_path}"
+                            self.api.logger.debug(
+                                f"{"LRCLIB Lyrics"}: Deleted orphaned file: {lrc_path}"
                             )
                         except Exception as e:
-                            log.error(
-                                f"{PLUGIN_NAME}: Failed to delete {lrc_path}: {e}"
+                            self.api.logger.error(
+                                f"{"LRCLIB Lyrics"}: Failed to delete {lrc_path}: {e}"
                             )
 
         except Exception as e:
-            log.error(f"{PLUGIN_NAME}: Error scanning directory {root_dir}: {e}")
+            self.api.logger.error(f"{"LRCLIB Lyrics"}: Error scanning directory {root_dir}: {e}")
 
         return orphaned_count
 
 
-def get_on_load(track: Track, file: File) -> None:
-    if not config.setting["get_on_load"]:
+def get_on_load(api, track: Track, file: File) -> None:
+    if not api.plugin_config["get_on_load"]:
         return
     try:
         if not track.files:
@@ -673,13 +650,13 @@ def get_on_load(track: Track, file: File) -> None:
         album = track.album
         assert isinstance(album, Album), "Album is not of type Album"
         length = get_track_duration(track)
-        fetch_lyrics("get_on_load", album, track.metadata, track.files, length)
+        fetch_lyrics(api, "get_on_load", album, track.metadata, track.files, length)
     except Exception as err:
-        log.error(f"{PLUGIN_NAME}: Error in get_on_load: {err}")
+        api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_load: {err}")
 
 
-def get_on_save(file: File) -> None:
-    if not config.setting["get_on_save"]:
+def get_on_save(api, file: File) -> None:
+    if not api.plugin_config["get_on_save"]:
         return
     if file.filename in files_processing:
         return files_processing.discard(
@@ -687,7 +664,7 @@ def get_on_save(file: File) -> None:
         )  # Picard only allow one concurrent save_hook
     try:
         files_processing.add(file.filename)
-        album = file.parent.album  # type: ignore
+        album = file.parent_item.album  # type: ignore
         assert isinstance(album, Album), "Album is not of type Album"
         metadata = file.metadata
         assert isinstance(metadata, Metadata), "Metadata is not of type Metadata"
@@ -695,14 +672,14 @@ def get_on_save(file: File) -> None:
         if metadata["~length"]:
             length = parse_duration(str(metadata["~length"]))
         assert isinstance(length, int), "Length is not of type integer"
-        fetch_lyrics("get_on_save", album, metadata, [file], length)
+        fetch_lyrics(api, "get_on_save", album, metadata, [file], length)
     except Exception as err:
-        log.error(f"{PLUGIN_NAME}: Error in get_on_save: {err}")
+        api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_save: {err}")
         files_processing.discard(file.filename)
 
 
 class LrcLibLyricsGet(BaseAction):
-    NAME = "Get lyrics automatically with LRCLIB"
+    TITLE = "Get lyrics automatically with LRCLIB"
 
     def execute_on_track(self, track):
         try:
@@ -711,51 +688,58 @@ class LrcLibLyricsGet(BaseAction):
             album = track.album
             assert isinstance(album, Album), "Album is not of type Album"
             length = get_track_duration(track)
-            fetch_lyrics("get", album, track.metadata, track.files, length)
+            fetch_lyrics(self.api, "get", album, track.metadata, track.files, length)
         except Exception as err:
-            log.error(err)
+            self.api.logger.error(err)
 
 
     def callback(self, objs):
         for item in (t for t in objs if isinstance(t, Track) or isinstance(t, Album)):
             if isinstance(item, Track):
-                log.debug("{}: {}, {}".format(PLUGIN_NAME, item, item.album))
+                self.api.logger.debug("{}: {}, {}".format("LRCLIB Lyrics", item, item.album))
                 self.execute_on_track(item)
             elif isinstance(item, Album):
                 for track in item.tracks:
-                    log.debug("{}: {}, {}".format(PLUGIN_NAME, track, item))
+                    self.api.logger.debug("{}: {}, {}".format("LRCLIB Lyrics", track, item))
                     self.execute_on_track(track)
 
 
 class LrcLibLyricsSearch(BaseAction):
-    NAME = "Search lyrics manually with LRCLIB"
+    TITLE = "Search lyrics manually with LRCLIB"
 
     def execute_on_track(self, track):
         try:
             if not track.linked_files:  # If it's not in your local file then ignore
                 return
-            fetch_lyrics("search", track.album, track.metadata, track.linked_files)
+            fetch_lyrics(self.api, "search", track.album, track.metadata, track.linked_files)
         except Exception as err:
-            log.error(err)
+            self.api.logger.error(err)
 
     def callback(self, objs):
         for item in (t for t in objs if isinstance(t, Track) or isinstance(t, Album)):
             if isinstance(item, Track):
-                log.debug("{}: {}, {}".format(PLUGIN_NAME, item, item.album))
+                self.api.logger.debug("{}: {}, {}".format("LRCLIB Lyrics", item, item.album))
                 self.execute_on_track(item)
             elif isinstance(item, Album):
                 for track in item.tracks:
-                    log.debug("{}: {}, {}".format(PLUGIN_NAME, track, item))
+                    self.api.logger.debug("{}: {}, {}".format("LRCLIB Lyrics", track, item))
                     self.execute_on_track(track)
 
 
-register_file_post_addition_to_track_processor(get_on_load)
-register_file_post_save_processor(get_on_save)
+def enable(api: PluginApi):
+    """Called when plugin is enabled."""
+    api.register_file_post_addition_to_track_processor(get_on_load)
+    api.register_file_post_save_processor(get_on_save)
+    api.register_track_action(LrcLibLyricsSearch)
+    api.register_album_action(LrcLibLyricsSearch)
+    api.register_track_action(LrcLibLyricsGet)
+    api.register_album_action(LrcLibLyricsGet)
 
-register_track_action(LrcLibLyricsSearch())
-register_album_action(LrcLibLyricsSearch())
+    api.plugin_config.register_option("get_on_load", False)
+    api.plugin_config.register_option("get_on_save", False)
+    api.plugin_config.register_option("auto_overwrite", False)
+    api.plugin_config.register_option("save_lrc_file", False)
+    api.plugin_config.register_option("ignore_instrumental", False)
+    api.plugin_config.register_option("plain_as_txt", False)
 
-register_track_action(LrcLibLyricsGet())
-register_album_action(LrcLibLyricsGet())
-
-register_options_page(LrclibLyricsOptionsPage)
+    api.register_options_page(LrclibLyricsOptionsPage)

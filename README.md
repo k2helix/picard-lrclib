@@ -51,7 +51,7 @@ A MusicBrainz Picard plugin to fetch lyrics from [LRCLIB](https://lrclib.net) an
 ## Compatibility
 | Component           | Supported          |
 |---------------------|--------------------|
-| Picard Versions     | 2.0+ (API v2.0-2.6)|
+| Picard Versions     | 3.0+ |
 | Audio Formats       | All (MP3, FLAC, etc.) |
 | Media Servers       | Jellyfin, Plex, Emby |
 | Players             | MusicBee, Foobar2000, AIMP |
