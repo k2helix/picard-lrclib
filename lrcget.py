@@ -99,7 +99,7 @@ def confirm_replace(parent, title, description):
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
             QtWidgets.QMessageBox.StandardButton.No,
         )
-        return reply == QtWidgets.QMessageBox.Yes
+        return reply == QtWidgets.QMessageBox.StandardButton.Yes
     except Exception:
         return False
 
@@ -216,7 +216,7 @@ def show_search_table(api, parent, query, response, request_callback):
         return None
 
 
-def _request(api, url, album, callback, queryargs=None, important=False):
+def _request(api, url, album, task_id, callback, queryargs=None, important=False):
     if not queryargs:
         queryargs = {}
 
@@ -233,7 +233,7 @@ def _request(api, url, album, callback, queryargs=None, important=False):
     
     api.add_album_task(
         album,
-        f'data_{album.id}',
+        task_id,
         'Fetching data',
         request_factory=create_request,
     )
@@ -275,9 +275,14 @@ def fetch_lyrics(
 
     if method == "search":
         url = lrclib_search_url
+        task_id = f"search_{title}_{album.id}"
         queryargs = {"q": title}
     else:
         url = lrclib_get_url
+        task_id = f"get_{artist}_{title}_{album.id}" # I guess it is possible for two tracks to have the same id
+                                                     # if they have the same name, artist and album id. But that
+                                                     # seems weird to happen and if it does it just prints a warning
+                                                     # in Picard's logs when the tasks end
         queryargs = {
             "track_name": title,
             "artist_name": artist,
@@ -300,7 +305,8 @@ def fetch_lyrics(
         api,  # type: ignore
         url,
         album,
-        partial(process_response, api, method, album, metadata, linked_files),
+        task_id,
+        partial(process_response, api, method, album, metadata, task_id, linked_files),
         queryargs,
     )
 
@@ -310,6 +316,7 @@ def process_response(
     method: str,
     album: Album,
     metadata: Metadata,
+    task_id: str,
     linked_files: list[File],
     response,
     reply,
@@ -328,7 +335,7 @@ def process_response(
                 files_processing.discard(file.filename)
         # album._requests -= 1
         # album._finalize_loading(None)
-        api.complete_album_task(album, f'data_{album.id}')
+        api.complete_album_task(album, task_id)
         return
 
     try:
@@ -444,7 +451,7 @@ def process_response(
             for file in linked_files:
                 file.save()
 
-        api.complete_album_task(album, f'data_{album.id}')
+        api.complete_album_task(album, task_id)
         # album._requests -= 1
         # album._finalize_loading(None)
 
@@ -687,7 +694,7 @@ class LrcLibLyricsGet(BaseAction):
                 return
             album = track.album
             assert isinstance(album, Album), "Album is not of type Album"
-            length = get_track_duration(api, track)
+            length = get_track_duration(self.api, track)
             fetch_lyrics(self.api, "get", album, track.metadata, track.files, length)
         except Exception as err:
             self.api.logger.error(err)
