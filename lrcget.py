@@ -690,7 +690,7 @@ class LrcLibLyricsGet(BaseAction):
 
     def execute_on_track(self, track):
         try:
-            if not track.linked_files:  # If it's not in your local file then ignore
+            if not track.files:  # If it's not in your local file then ignore
                 return
             album = track.album
             assert isinstance(album, Album), "Album is not of type Album"
@@ -716,9 +716,9 @@ class LrcLibLyricsSearch(BaseAction):
 
     def execute_on_track(self, track):
         try:
-            if not track.linked_files:  # If it's not in your local file then ignore
+            if not track.files:  # If it's not in your local file then ignore
                 return
-            fetch_lyrics(self.api, "search", track.album, track.metadata, track.linked_files)
+            fetch_lyrics(self.api, "search", track.album, track.metadata, track.files)
         except Exception as err:
             self.api.logger.error(err)
 
