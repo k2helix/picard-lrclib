@@ -96,8 +96,8 @@ def confirm_replace(parent, title, description):
             parent,
             title,
             description,
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
         )
         return reply == QtWidgets.QMessageBox.Yes
     except Exception:
@@ -140,13 +140,13 @@ def show_search_table(api, parent, query, response, request_callback):
     hheader.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
     hheader.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.Interactive)
     hheader.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-    table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-    table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-    table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+    table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+    table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+    table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
     layout.addWidget(table)
 
     button_box = QtWidgets.QDialogButtonBox(
-        QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
     )
     layout.addWidget(button_box)
 
@@ -209,7 +209,7 @@ def show_search_table(api, parent, query, response, request_callback):
     button_box.rejected.connect(dialog.reject)
 
     result = dialog.exec()
-    if result == QtWidgets.QDialog.Accepted:
+    if result == QtWidgets.QDialog.DialogCode.Accepted:
         selected = table.currentRow()
         return response[selected] if selected >= 0 else None
     else:
@@ -572,8 +572,8 @@ class LrclibLyricsOptionsPage(OptionsPage):
                 parent,
                 "Select Music Library Root Directory",
                 "",
-                QtWidgets.QFileDialog.ShowDirsOnly
-                | QtWidgets.QFileDialog.DontResolveSymlinks,
+                QtWidgets.QFileDialog.Option.ShowDirsOnly
+                | QtWidgets.QFileDialog.Option.DontResolveSymlinks,
             )
 
             if not root_dir:
