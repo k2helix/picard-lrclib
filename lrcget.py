@@ -252,12 +252,12 @@ def _fetch_json(api, url, params):
         )
         with urlopen(req, timeout=10) as resp:
             if resp.status != 200:
-                api.logger.error(f"{"LRCLIB Lyrics"}: HTTP error {resp.status} for {full_url}")
+                api.logger.error(f"LRCLIB Lyrics: HTTP error {resp.status} for {full_url}")
                 return {}
             data = resp.read().decode("utf-8")
             return json.loads(data)
     except Exception as e:
-        api.logger.error(f"{"LRCLIB Lyrics"}: fetch_json: failed to request {url} — {e}")
+        api.logger.error(f"LRCLIB Lyrics: fetch_json: failed to request {url} — {e}")
         return {}
 
 
@@ -407,14 +407,14 @@ def process_response(
                             os.remove(old_file)
                         except Exception as e:
                             api.logger.error(
-                                f"{"LRCLIB Lyrics"}: Failed to delete {old_file}: {e}"
+                                f"LRCLIB Lyrics: Failed to delete {old_file}: {e}"
                             )
 
                 try:
                     with open(file_lrc, "w", encoding="utf-8") as f:
                         f.write(lyrics)
                 except Exception as e:
-                    api.logger.error(f"{"LRCLIB Lyrics"}: Failed to write .lrc file: {e}")
+                    api.logger.error(f"LRCLIB Lyrics: Failed to write .lrc file: {e}")
                     parent_widget = getattr(
                         getattr(file, "tagger", None), "window", None
                     )
@@ -577,10 +577,10 @@ class LrclibLyricsOptionsPage(OptionsPage):
             )
 
             if not root_dir:
-                self.api.logger.info(f"{"LRCLIB Lyrics"}: User cancelled directory selection")
+                self.api.logger.info(f"LRCLIB Lyrics: User cancelled directory selection")
                 return
 
-            self.api.logger.info(f"{"LRCLIB Lyrics"}: Starting recursive scan of {root_dir}")
+            self.api.logger.info(f"LRCLIB Lyrics: Starting recursive scan of {root_dir}")
             orphaned_count = self._clean_directory_recursive(root_dir)
 
             if orphaned_count > 0:
@@ -589,21 +589,21 @@ class LrclibLyricsOptionsPage(OptionsPage):
                     "Cleanup Complete",
                     f"Removed {orphaned_count} orphaned .lrc file{'s' if orphaned_count != 1 else ''}",
                 )
-                self.api.logger.info(f"{"LRCLIB Lyrics"}: Cleaned {orphaned_count} orphaned .lrc files")
+                self.api.logger.info(f"LRCLIB Lyrics: Cleaned {orphaned_count} orphaned .lrc files")
             else:
                 QtWidgets.QMessageBox.information(
                     parent, "Cleanup Complete", "No orphaned .lrc files found"
                 )
-                self.api.logger.info(f"{"LRCLIB Lyrics"}: No orphaned .lrc files found")
+                self.api.logger.info(f"LRCLIB Lyrics: No orphaned .lrc files found")
 
         except Exception as err:
             self.api.logger.error(
-                f"{"LRCLIB Lyrics"}: Error cleaning orphaned files: {err}", exc_info=True
+                f"LRCLIB Lyrics: Error cleaning orphaned files: {err}", exc_info=True
             )
 
     def _clean_directory_recursive(self, root_dir):
         if not os.path.isdir(root_dir):
-            self.api.logger.warning(f"{"LRCLIB Lyrics"}: Directory does not exist: {root_dir}")
+            self.api.logger.warning(f"LRCLIB Lyrics: Directory does not exist: {root_dir}")
             return 0
 
         orphaned_count = 0
@@ -628,15 +628,15 @@ class LrclibLyricsOptionsPage(OptionsPage):
                             os.remove(lrc_path)
                             orphaned_count += 1
                             self.api.logger.debug(
-                                f"{"LRCLIB Lyrics"}: Deleted orphaned file: {lrc_path}"
+                                f"LRCLIB Lyrics: Deleted orphaned file: {lrc_path}"
                             )
                         except Exception as e:
                             self.api.logger.error(
-                                f"{"LRCLIB Lyrics"}: Failed to delete {lrc_path}: {e}"
+                                f"LRCLIB Lyrics: Failed to delete {lrc_path}: {e}"
                             )
 
         except Exception as e:
-            self.api.logger.error(f"{"LRCLIB Lyrics"}: Error scanning directory {root_dir}: {e}")
+            self.api.logger.error(f"LRCLIB Lyrics: Error scanning directory {root_dir}: {e}")
 
         return orphaned_count
 
@@ -652,7 +652,7 @@ def get_on_load(api, track: Track, file: File) -> None:
         length = get_track_duration(api, track)
         fetch_lyrics(api, "get_on_load", album, track.metadata, track.files, length)
     except Exception as err:
-        api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_load: {err}")
+        api.logger.error(f"LRCLIB Lyrics: Error in get_on_load: {err}")
 
 
 def get_on_save(api, file: File) -> None:
@@ -674,7 +674,7 @@ def get_on_save(api, file: File) -> None:
         assert isinstance(length, int), "Length is not of type integer"
         fetch_lyrics(api, "get_on_save", album, metadata, [file], length)
     except Exception as err:
-        api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_save: {err}")
+        api.logger.error(f"LRCLIB Lyrics: Error in get_on_save: {err}")
         files_processing.discard(file.filename)
 
 
