@@ -70,7 +70,7 @@ def parse_duration(time_str: str):
 
     return total_seconds
 
-def get_track_duration(track: Track) -> int:
+def get_track_duration(api, track: Track) -> int:
     metadata = track.metadata
     assert isinstance(metadata, Metadata), "Metadata is not of type Metadata"
     length = None
@@ -104,7 +104,7 @@ def confirm_replace(parent, title, description):
         return False
 
 
-def show_search_table(parent, query, response, request_callback):
+def show_search_table(api, parent, query, response, request_callback):
     parent = QtWidgets.QApplication.activeWindow() if parent is None else parent
     dialog = QtWidgets.QDialog(parent)
     dialog.setWindowTitle("Search Tracks")
@@ -190,7 +190,7 @@ def show_search_table(parent, query, response, request_callback):
             return
         try:
             params = {"q": query}
-            response = request_callback(lrclib_search_url, params)
+            response = request_callback(api, lrclib_search_url, params)
             populate_table(response)
             api.logger.debug(f"Search refreshed: {len(response)} results")
         except Exception as e:
@@ -239,7 +239,7 @@ def _request(api, url, album, callback, queryargs=None, important=False):
     )
 
 
-def _fetch_json(url, params):
+def _fetch_json(api, url, params):
     try:
         query = urlencode(params)
         full_url = f"{url}?{query}"
@@ -335,7 +335,7 @@ def process_response(
         if method == "search":
             parent = album.tagger.window if hasattr(album, "tagger") else None  # type: ignore
             response = show_search_table(
-                parent, metadata["title"], response, _fetch_json
+                api, parent, metadata["title"], response, _fetch_json
             )
             if response is None:
                 return
@@ -649,7 +649,7 @@ def get_on_load(api, track: Track, file: File) -> None:
             return
         album = track.album
         assert isinstance(album, Album), "Album is not of type Album"
-        length = get_track_duration(track)
+        length = get_track_duration(api, track)
         fetch_lyrics(api, "get_on_load", album, track.metadata, track.files, length)
     except Exception as err:
         api.logger.error(f"{"LRCLIB Lyrics"}: Error in get_on_load: {err}")
@@ -687,7 +687,7 @@ class LrcLibLyricsGet(BaseAction):
                 return
             album = track.album
             assert isinstance(album, Album), "Album is not of type Album"
-            length = get_track_duration(track)
+            length = get_track_duration(api, track)
             fetch_lyrics(self.api, "get", album, track.metadata, track.files, length)
         except Exception as err:
             self.api.logger.error(err)
